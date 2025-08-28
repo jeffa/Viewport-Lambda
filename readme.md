@@ -46,6 +46,21 @@ aws lambda create-function --function-name mySpreadsheetLambda \\
    --runtime python3.8 --role arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_LAMBDA_EXECUTION_ROLE
 ```
 
+API Gateway Setup Guide
+--------
+`¯\_(ツ)_/¯`
+
+Javascript Client
+--------
+The incoming JSON should have the following structure:
+```json
+{
+    "coordinates": [[x1, y1], [x2, y2], ..., [xn, yn]],
+    "world_bounds": [xmin, xmax, ymin, ymax],   // Optional
+    "view_bounds": [xmin, xmax, ymin, ymax]     // Optional
+}
+```
+
 Support and Documentation
 -------------------------
 For AWS CLI support Follow the instructions in the [AWS CLI User Guide](https://docs.aws.amazon.com/cli/latest/userguide/).

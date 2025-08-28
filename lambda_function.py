@@ -5,40 +5,40 @@ def lambda_handler(event, context):
 
     # Common CORS headers
     cors_headers = {
-        "Access-Control-Allow-Origin":  "*",
+        "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type,Authorization",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
     }
-    
-    #TODO: do not use GET -- pass JSON as POST
-    # Extract the query string parameter
-    query_string_parameters = event.get('queryStringParameters', {})
-    coordinates = query_string_parameters.get('coordinates', '')
 
-    # Parse the coordinates, expecting a format like "x1,y1;x2,y2;...;xn,yn"
-    if not coordinates:
+    # Check if the request method is POST
+    if event['httpMethod'] != 'POST':
         return {
-            "statusCode": 400,
+            "statusCode": 405,
             "headers": cors_headers,
-            "body": json.dumps({"error": "No coordinates provided"})
+            "body": json.dumps({"error": "Method not allowed. Only POST requests are accepted."})
         }
 
-    coordinate_pairs = coordinates.split(';')
-
     try:
+        # Parse JSON body
+        body = json.loads(event['body'])
+
+        # Extract coordinates, world_bounds, and view_bounds from the JSON object
+        coordinates = body.get('coordinates', [])
+        world_bounds = tuple(body.get('world_bounds', [0, 1, 0, 1]))
+        view_bounds = tuple(body.get('view_bounds', [-1, 1, -1, 1]))
+
         # Create viewport object
-        world_bounds = (0, 1, 0, 1)
-        view_bounds = (-1, 1, -1, 1)
         vp = viewport(world_bounds=world_bounds, view_bounds=view_bounds)
 
         # Transform the coordinates
         transformed_points = []
 
-        for pair in coordinate_pairs:
-            x_str, y_str = pair.split(',')
-            x, y = float(x_str), float(y_str)
-            transformed_x = vp.Dx(x)
-            transformed_y = vp.Dy(y)
+        for pair in coordinates:
+            if len(pair) != 2:
+                raise ValueError("Each coordinate pair must contain exactly two values (x, y).")
+            x, y = pair
+            transformed_x = vp.Dx(float(x))
+            transformed_y = vp.Dy(float(y))
             transformed_points.append(f"{transformed_x},{transformed_y}")
 
         # Return transformed coordinates as a delimited string
@@ -50,11 +50,21 @@ def lambda_handler(event, context):
             "body": json.dumps({"transformed_coordinates": transformed_coordinates})
         }
 
+    except json.JSONDecodeError:
+        return {
+            "statusCode": 400,
+            "headers": cors_headers,
+            "body": json.dumps({"error": "Invalid JSON format."})
+        }
+    except ValueError as ve:
+        return {
+            "statusCode": 400,
+            "headers": cors_headers,
+            "body": json.dumps({"error": str(ve)})
+        }
     except Exception as e:
         return {
             "statusCode": 500,
             "headers": cors_headers,
             "body": json.dumps({"error": str(e)})
         }
-
-

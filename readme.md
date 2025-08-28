@@ -63,4 +63,6 @@ The incoming JSON should have the following structure:
 
 Support and Documentation
 -------------------------
+[curl examples](curl-examples.md)
+
 For AWS CLI support Follow the instructions in the [AWS CLI User Guide](https://docs.aws.amazon.com/cli/latest/userguide/).

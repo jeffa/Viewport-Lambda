@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waveform Generator</title>
+    <style>
+        #output {
+            width: 100%;
+            height: auto;
+            border: 1px solid black;
+            padding: 10px;
+            white-space: pre-wrap; /* Preserve whitespace for better readability */
+            font-family: monospace; /* Use a monospace font for ASCII representation */
+        }
+    </style>
+</head>
+<body>
+    <h1>Waveform Generator</h1>
+    <label for="waveform">Select Waveform:</label>
+    <select id="waveform">
+        <option value="sine">Sine</option>
+        <option value="square">Square</option>
+        <option value="sawtooth">Sawtooth</option>
+        <option value="triangle">Triangle</option>
+    </select>
+
+    <div id="output"></div>
+
+    <script>
+        const outputDiv = document.getElementById('output');
+        const apiUrl = 'https://fy1o26dy5c.execute-api.us-east-1.amazonaws.com/DEV/tform';
+
+        document.getElementById('waveform').addEventListener('change', function() {
+            const wave = this.value;
+            const coords = generateCoords(wave, 0.01);
+            const tcoords = transformCoords(coords, apiUrl);
+            displayAsciiValues(tcoords);
+        });
+
+        //for Lambda (will pass as args)
+        //X = 500;
+        //Y = 250;
+        function generateCoords(wave, resolution) {
+            const coords = [];
+            for (let x = 0; x <= 10; x += resolution) {
+                let y;
+                switch (wave) {
+                    case 'sine':
+                        y = Math.sin(x);
+                        break;
+                    case 'square':
+                        y = Math.sign(Math.sin(x)) * 0.9;
+                        break;
+                    case 'sawtooth':
+                        y = (x / 10) % 1;
+                        break;
+                    case 'triangle':
+                        y = (2 / Math.PI) * Math.asin(Math.sin(x * Math.PI));
+                        break;
+                    default:
+                        y = 0;
+                }
+                coords.push({ x: x, y: y });
+            }
+            return coords;
+        }
+
+        async function transformCoords(coords, apiUrl) {
+
+            const errors = [];
+
+            try {
+                const queryParams = coords.map(item => `${item.x.toFixed(2)},${item.y.toFixed(2)}`).join('%3B');
+                const response = await fetch(`${apiUrl}?${queryParams}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const tcoords = data.transformed_coordinates.split('%3B').map(coord => {
+                    const [x, y] = coord.split(',').map(Number);
+                    return { x: x, y: y };
+                });
+
+                return tcoords;
+            } catch (error) {
+                console.error('Error fetching coordinates:', error);
+            }
+        }
+
+        function displayAsciiValues(coords) {
+            // Clear previous output
+            outputDiv.innerHTML = '';
+
+            // Create and display the ASCII values of the coords array
+            const asciiOutput = coords.map(coord => `(${coord.x.toFixed(2)}, ${coord.y.toFixed(2)})`).join('\n');
+            outputDiv.textContent = asciiOutput; // Use textContent to show ASCII correctly
+        }
+
+        // Trigger change event to draw the initial waveform
+        document.getElementById('waveform').dispatchEvent(new Event('change'));
+    </script>
+</body>
+</html>

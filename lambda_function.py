@@ -1,7 +1,18 @@
 import json
 from window.viewport import viewport
 
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 def lambda_handler(event, context):
+
+    # handle both REST-API v1 and HTTP-API v2 shapes
+    method = (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+        or "GET"
+    )
 
     # Common CORS headers
     cors_headers = {
@@ -10,8 +21,16 @@ def lambda_handler(event, context):
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
     }
 
+    # short-circuit OPTIONS preflight
+    if method == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": cors_headers,
+            "body": json.dumps({"message": "OK"})
+        }
+
     # Check if the request method is POST
-    if event['httpMethod'] != 'POST':
+    if method != 'POST':
         return {
             "statusCode": 405,
             "headers": cors_headers,
@@ -20,7 +39,23 @@ def lambda_handler(event, context):
 
     try:
         # Parse JSON body
-        body = json.loads(event['body'])
+        logger.info("Incoming event: %s", json.dumps(event))
+
+        # 2) pull out the JSON string
+        raw_body = event.get("body")
+        if raw_body is None and "body-json" in event:
+            raw_body = json.dumps(event["body-json"])
+
+        if raw_body is None:
+            return {
+            "statusCode": 400,
+            "headers": cors_headers,
+            "body": json.dumps({ "error": "no body found" })
+            }
+
+        # 3) parse it
+        body = json.loads(raw_body)
+        logger.info("Parsed body: %s", json.dumps(body))
 
         # Extract coordinates, world_bounds, and view_bounds from the JSON object
         coordinates = body.get('coordinates', [])
@@ -39,15 +74,12 @@ def lambda_handler(event, context):
             x, y = pair
             transformed_x = vp.Dx(float(x))
             transformed_y = vp.Dy(float(y))
-            transformed_points.append(f"{transformed_x},{transformed_y}")
-
-        # Return transformed coordinates as a delimited string
-        transformed_coordinates = ';'.join(transformed_points)
+            transformed_points.append([tx, ty])
 
         return {
             "statusCode": 200,
             "headers": cors_headers,
-            "body": json.dumps({"transformed_coordinates": transformed_coordinates})
+            "body": json.dumps({"coordinates": transformed_points})
         }
 
     except json.JSONDecodeError:

@@ -49,7 +49,7 @@ aws lambda create-function --function-name mySpreadsheetLambda \\
 API Gateway Setup Guide
 --------
 Create a resource with a name such as `tform` or `transform` and create a POST method for it.
-Cors is handled within the lambda so you should not need to configure one in the API Gateway.
+Despite Cors being handled within the lambda you will still need to configure it for the Gateway.
 
 Javascript Client
 --------

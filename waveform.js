@@ -1,0 +1,108 @@
+const outputDiv = document.getElementById('output');
+const apiUrl = 'https://fy1o26dy5c.execute-api.us-east-1.amazonaws.com/DEV/tform';
+
+document.getElementById('waveform').addEventListener('change', async function() {
+    const wave = this.value;
+    const coords = generateCoords(wave, 0.01);
+    const tcoords = await transformCoords(coords, apiUrl);
+    //displayAsciiValues(tcoords);
+    drawWaveform(tcoords);
+});
+
+// Trigger change event to draw the initial waveform
+document.getElementById('waveform').dispatchEvent(new Event('change'));
+
+function generateCoords(wave, resolution) {
+    const coords = [];
+    for (let x = 0; x <= 10; x += resolution) {
+        let y;
+        switch (wave) {
+            case 'sine':
+                y = Math.sin(x);
+                break;
+            case 'square':
+                y = Math.sign(Math.sin(x)) * 0.9;
+                break;
+            case 'sawtooth':
+                y = (x / 10) % 1;
+                break;
+            case 'triangle':
+                y = (2 / Math.PI) * Math.asin(Math.sin(x * Math.PI));
+                break;
+            default:
+                y = 0;
+        }
+        coords.push({ x: x, y: y });
+    }
+    return coords;
+}
+
+async function transformCoords(coords, apiUrl) {
+    const errors = [];
+
+    try {
+        // Prepare the payload with coordinates as a JSON object
+        const payload = {
+            coordinates: coords.map(item => [item.x.toFixed(4), item.y.toFixed(4)]),
+            world_bounds: [-1, 1, -10, 10],   // all four quadrants
+            view_bounds: [500, 0, 0, 250]   // invert Y
+        };
+        //console.log('payload: ', JSON.stringify(payload));
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            console.error(`HTTP error! Status: ${response.status}`);
+            const errorData = await response.json();
+            console.error('Error Data: ', errorData);
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        // Assuming the response JSON structure matches that of the CURL example
+        const data = await response.json();
+        //console.log('data: ', JSON.stringify(data));
+
+        // Parse the transformed coordinates from the response
+        const tcoords = data.coordinates.map(coord => {
+            return {x: Number(coord[0]), y: Number(coord[1])}; // Ensure to handle as numbers
+        });
+        console.log('tcoords before: ', JSON.stringify(tcoords));
+
+        return tcoords;
+
+    } catch (error) {
+        console.error('Error fetching coordinates:', error);
+    }
+}
+
+function displayAsciiValues(coords) {
+    // Clear previous output
+    outputDiv.innerHTML = '';
+
+    // Create and display the ASCII values of the coords array
+    const asciiOutput = coords.map(coord => `(${coord.x.toFixed(2)}, ${coord.y.toFixed(2)})`).join('\n');
+    outputDiv.textContent = asciiOutput; // Use textContent to show ASCII correctly
+}
+
+function drawWaveform(coords) {
+    outputDiv.innerHTML = ''; // Clear previous waveforms
+    const svgNamespace = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNamespace, "svg");
+    svg.setAttribute("width", "500");
+    svg.setAttribute("height", "250");
+
+    let pathData = 'M ' + coords.map(coord => `${coord.x},${coord.y}`).join(' L ');
+
+    const path = document.createElementNS(svgNamespace, "path");
+    path.setAttribute("d", pathData);
+    path.setAttribute("stroke", "black");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke-width", "2");
+
+    svg.appendChild(path);
+    outputDiv.appendChild(svg);
+}

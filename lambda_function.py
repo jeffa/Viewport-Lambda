@@ -38,10 +38,10 @@ def lambda_handler(event, context):
         }
 
     try:
-        # Parse JSON body
-        logger.info("Incoming event: %s", json.dumps(event))
+        logger.info("API was called.")
+        #logger.info("Incoming event: %s", json.dumps(event))
 
-        # 2) pull out the JSON string
+        # pull out the JSON string
         raw_body = event.get("body")
         if raw_body is None and "body-json" in event:
             raw_body = json.dumps(event["body-json"])
@@ -53,10 +53,7 @@ def lambda_handler(event, context):
             "body": json.dumps({ "error": "no body found" })
             }
 
-        # get the raw JSON string
         raw_body = event.get("body") or ""
-
-        # first parse
         outer = json.loads(raw_body)
 
         # if API Gateway wrapped it under "body", unwrap again
@@ -65,18 +62,10 @@ def lambda_handler(event, context):
         else:
             body = outer
 
-        logger.info("Parsed body: %s", json.dumps(body))
-
         # Extract coordinates, world_bounds, and view_bounds from the JSON object
         coordinates = body.get('coordinates', [])
         world_bounds = tuple(body.get('world_bounds', [0, 1, 0, 1]))
-        view_bounds = tuple(body.get('view_bounds', [-1, 1, -1, 1]))
-        logger.info(
-            " coordinates: %s\n world_bounds: %s\n view_bounds: %s",
-            json.dumps(coordinates),
-            json.dumps(world_bounds),
-            json.dumps(view_bounds)
-        )
+        view_bounds = tuple(body.get('view_bounds', [100, 0, 0, 100]))
 
         # Create viewport object
         vp = viewport(world_bounds=world_bounds, view_bounds=view_bounds)

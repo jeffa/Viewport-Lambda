@@ -33,7 +33,7 @@
 
         document.getElementById('waveform').addEventListener('change', function() {
             const wave = this.value;
-            const coords = generateCoords(wave, 0.01);
+            const coords = generateCoords(wave, 1);
             const tcoords = transformCoords(coords, apiUrl);
             displayAsciiValues(tcoords);
         });
@@ -67,20 +67,35 @@
         }
 
         async function transformCoords(coords, apiUrl) {
-
             const errors = [];
 
             try {
-                const queryParams = coords.map(item => `${item.x.toFixed(2)},${item.y.toFixed(2)}`).join('%3B');
-                const response = await fetch(`${apiUrl}?${queryParams}`);
+                // Prepare the payload with coordinates as a JSON object
+                const payload = {
+                    coordinates: coords.map(item => [item.x.toFixed(2), item.y.toFixed(2)])
+                };
+                console.log('payload: ', JSON.stringify(payload));
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
                 if (!response.ok) {
+                    console.error(`HTTP error! Status: ${response.status}`);
+                    const errorData = await response.json();
+                    console.error('Error Data: ', errorData);
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
 
+                // Assuming the response JSON structure matches that of the CURL example
                 const data = await response.json();
-                const tcoords = data.transformed_coordinates.split('%3B').map(coord => {
-                    const [x, y] = coord.split(',').map(Number);
-                    return { x: x, y: y };
+                console.log('data: ', JSON.stringify(data));
+
+                // Parse the transformed coordinates from the response
+                const tcoords = data.coordinates.map(coord => {
+                    return [Number(coord[0]), Number(coord[1])]; // Ensure to handle as numbers
                 });
 
                 return tcoords;

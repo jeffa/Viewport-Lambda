@@ -13,23 +13,20 @@ Lambda Setup Guide
 --------
 Create a Python Virtual Environment:
 ```bash
-mkdir my_lambda_function
-cd my_lambda_function
+mkdir my_lambda_project
+cd my_lambda_project
 python3 -m venv venv
-source venv/bin/activate
 ```
 Create a Deployment Package:
 ```bash
-deactivate
 mkdir package
 source venv/bin/activate
-pip install Your-Modules -t ./package
+pip install window-viewport -t ./package
 deactivate
 ```
-
 Copy your lambda function into the package directory:
 ```bash
-cp lambda_function.py package/
+cp /path/to/lambda_function.py package/
 ```
 
 Zip your deployment package:

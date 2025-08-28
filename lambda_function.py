@@ -53,14 +53,30 @@ def lambda_handler(event, context):
             "body": json.dumps({ "error": "no body found" })
             }
 
-        # 3) parse it
-        body = json.loads(raw_body)
+        # get the raw JSON string
+        raw_body = event.get("body") or ""
+
+        # first parse
+        outer = json.loads(raw_body)
+
+        # if API Gateway wrapped it under "body", unwrap again
+        if isinstance(outer, dict) and "body" in outer and isinstance(outer["body"], str):
+            body = json.loads(outer["body"])
+        else:
+            body = outer
+
         logger.info("Parsed body: %s", json.dumps(body))
 
         # Extract coordinates, world_bounds, and view_bounds from the JSON object
         coordinates = body.get('coordinates', [])
         world_bounds = tuple(body.get('world_bounds', [0, 1, 0, 1]))
         view_bounds = tuple(body.get('view_bounds', [-1, 1, -1, 1]))
+        logger.info(
+            " coordinates: %s\n world_bounds: %s\n view_bounds: %s",
+            json.dumps(coordinates),
+            json.dumps(world_bounds),
+            json.dumps(view_bounds)
+        )
 
         # Create viewport object
         vp = viewport(world_bounds=world_bounds, view_bounds=view_bounds)
@@ -72,8 +88,8 @@ def lambda_handler(event, context):
             if len(pair) != 2:
                 raise ValueError("Each coordinate pair must contain exactly two values (x, y).")
             x, y = pair
-            transformed_x = vp.Dx(float(x))
-            transformed_y = vp.Dy(float(y))
+            tx = vp.Dx(float(x))
+            ty = vp.Dy(float(y))
             transformed_points.append([tx, ty])
 
         return {
